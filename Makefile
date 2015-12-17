@@ -1,8 +1,6 @@
 CFLAGS=-Wall -lpcap
-YACC_FILE=compiler.y
-LEX_FILE=compiler.l
 CC=gcc
-C_SOURCES=main.c
+C_SOURCES=packet.c main.c
 OUTPUT=tsrdump
 FILESTOREMOVE=$(OUTPUT)
 

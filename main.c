@@ -2,11 +2,14 @@
 #include <string.h>
 #include <pcap.h>
 
+#include "packet.h"
+
 void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
-	/* Grab a packet */
-	//packet = pcap_next(handle, &header);
 	/* Print its length */
-	printf("Jacked a packet with length of [%d]\n", header->len);
+	printf("Got one packet, size of [%d] bytes\n", header->len);
+
+	packet_viewer(packet);
+	printf("\n");
 }
 
 int main(int argc, char *argv[])
@@ -27,7 +30,7 @@ int main(int argc, char *argv[])
 		dev = pcap_lookupdev(errbuf);
 		if (dev == NULL) {
 			fprintf(stderr, "Couldn't find default device: %s\n", errbuf);
-			return(2);
+			return -1;
 		}
 	}
 	/* Find the properties for the device */
@@ -37,26 +40,28 @@ int main(int argc, char *argv[])
 		mask = 0;
 	}
 	/* Open the session in promiscuous mode */
-	handle = pcap_open_live(dev, BUFSIZ, 0, 0, errbuf);
+	handle = pcap_open_live(dev, BUFSIZ, 1, 0, errbuf);
 	if (handle == NULL) {
 		fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
-		return(2);
+		return -1;
 	}
 	/* Compile and apply the filter */
 	if(strcmp(filter_exp, "") != 0) {
 		if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
 			fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(handle));
-			return(2);
+			return -1;
 		}
 		if (pcap_setfilter(handle, &fp) == -1) {
 			fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(handle));
-			return(2);
+			return -1;
 		}
 	}
+
+	printf("Device: %s\n", dev);
 
 	/* Loop */
 	pcap_loop(handle, -1, packet_handler, NULL);
 	/* And close the session */
 	pcap_close(handle);
-	return(0);
+	return 0;
 }
