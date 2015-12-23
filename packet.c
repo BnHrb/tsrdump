@@ -4,15 +4,21 @@
 #include "packet.h"
 
 void packet_viewer(const u_char *packet) {
-	struct ether_header *ethernet;
+	//struct ether_header *ethernet;
 	//sniff_ip *ip;
 
-	ethernet = (struct ether_header*)(packet);
-	ethernet_viewer(packet, ethernet);
+	//ethernet = (struct ether_header*)(packet);
+	ethernet_viewer(packet);
 }
 
-void ethernet_viewer(const u_char *packet, struct ether_header* ethernet) {
+// Couche liaison
+
+void ethernet_viewer(const u_char *packet) {
+	struct ether_header *ethernet;
+	ethernet = (struct ether_header*)(packet);
 	int size_ethernet = sizeof(struct ether_header);
+
+	void (*next_layer)(const u_char*) = NULL;
 
 	printf("\n=== Ethernet Header ===\n");
 	printf("Destination: %02x:%02x:%02x:%02x:%02x:%02x\n", 
@@ -34,22 +40,89 @@ void ethernet_viewer(const u_char *packet, struct ether_header* ethernet) {
 	switch(ntohs(ethernet->ether_type)) {
 		case ETHERTYPE_IP:
 			printf("Type : IPv4\n");
-
-			struct ip *ip;
-			ip = (struct ip*)(packet + size_ethernet);
-			ip_viewer(packet + size_ethernet, ip);
+			next_layer = ip_viewer;
 			break;
 		case ETHERTYPE_IPV6:
 			printf("Type : IPv6\n");
 			break;
 		case ETHERTYPE_ARP:
 			printf("Type : ARP\n");
+			next_layer = arp_viewer;
+			break;
+	}
+
+	if(next_layer != NULL)
+		(*next_layer)(packet + size_ethernet);
+}
+
+// Couche réseau 
+
+void arp_viewer(const u_char *packet) {
+	struct arphdr *arp = (struct arphdr*)(packet);
+	int size_arp = sizeof(struct arphdr);
+
+	printf("\t=== ARP Header ===\n");
+	printf("\tHardware type : 0x%04x -- ", arp->ar_hrd);
+	switch(ntohs(arp->ar_hrd)) {
+		case ARPHRD_ETHER:
+			printf("Ethernet 10/100Mbps\n");
+			break;
+		default:
+			printf("Unknown\n");
+			break;
+	}
+	printf("\tProtocol type : 0x%04x -- ", arp->ar_pro);
+	switch(ntohs(arp->ar_pro)) {
+		case ETHERTYPE_IP:
+			printf("IPv4\n");
+			break;
+		case ETHERTYPE_IPV6:
+			printf("IPv6\n");
+			break;
+		default:
+			printf("Unknown\n");
+			break;
+	}
+	printf("\tHardware address length : %d bytes\n", arp->ar_hln);
+	printf("\tProtocol address length : %d bytes\n", arp->ar_pln);
+	printf("\tOperation : ");
+	switch(ntohs(arp->ar_op)) {
+		case ARPOP_REQUEST:
+			printf("ARP Request\n");
+
+			// todo
+			break;
+		case ARPOP_REPLY:
+			printf("ARP Reply\n");
+
+			// todo
+			break;
+		case ARPOP_RREQUEST:
+			printf("RARP Request\n");
+			break;
+		case ARPOP_RREPLY:
+			printf("RARP Reply\n");
+			break;
+		case ARPOP_InREQUEST:
+			printf("InARP Request\n");
+			break;
+		case ARPOP_InREPLY:
+			printf("InARP Reply\n");
+			break;
+		case ARPOP_NAK:
+			printf("ARP NAK\n");
+			break;
+		default:
+			printf("Unknown\n");
 			break;
 	}
 }
 
-void ip_viewer(const u_char *packet, struct ip* ip) {
+void ip_viewer(const u_char *packet) {
+	struct ip *ip = (struct ip*)(packet);
 	int size_ip = 32*ip->ip_len;
+
+	void (*next_layer)(const u_char*);
 
 	printf("\t=== Ip Header ===\n");
 	printf("\tVersion : %d\n", ip->ip_v);
@@ -60,28 +133,35 @@ void ip_viewer(const u_char *packet, struct ip* ip) {
 	switch(ip->ip_p) {
 		case SOL_UDP:
 			printf("\tProtocol : UDP\n");
-			struct udphdr* udp = (struct udphdr*)(packet + size_ip);
-			udp_viewer(packet + size_ip, udp);
+			next_layer = udp_viewer;
 			break;
 		case SOL_TCP:
 			printf("\tProtocol : TCP\n");
-			struct tcphdr* tcp = (struct tcphdr*)(packet + size_ip);
-			tcp_viewer(packet + size_ip, tcp);
+			next_layer = tcp_viewer;
 			break;
 	} 
 
-	// printf("\tSource : %s\n", inet_ntoa(ip->ip_src));
-	// printf("\tDestination : %s\n", inet_ntoa(ip->ip_dst));
+	printf("\tSource : %s\n", inet_ntoa(ip->ip_src));
+	printf("\tDestination : %s\n", inet_ntoa(ip->ip_dst));
+
+	(*next_layer)(packet + size_ip);
 }
 
-void udp_viewer(const u_char *packet, struct udphdr *udp) {
-	int size_udp = sizeof(struct udphdr);
+// Couche transport
+
+void udp_viewer(const u_char *packet) {
+	struct udphdr* udp = (struct udphdr*)(packet);
+	//int size_udp = sizeof(struct udphdr);
+
 	printf("\t\t=== UDP Header ===\n");
 	printf("\t\tSource port : %d\n", udp->source);
 	printf("\t\tDestination port : %d\n", udp->dest);
 	printf("\t\tLength : %d\n", udp->len);
 }
 
-void tcp_viewer(const u_char *packet, struct tcphdr *tcp) {
-
+void tcp_viewer(const u_char *packet) {
+	//struct tcphdr* tcp = (struct tcphdr*)(packet);
 }
+
+
+// Couche application
