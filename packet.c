@@ -8,6 +8,7 @@ void packet_viewer(const u_char *packet) {
 	//sniff_ip *ip;
 
 	//ethernet = (struct ether_header*)(packet);
+
 	ethernet_viewer(packet);
 }
 
@@ -59,7 +60,7 @@ void ethernet_viewer(const u_char *packet) {
 
 void arp_viewer(const u_char *packet) {
 	struct arphdr *arp = (struct arphdr*)(packet);
-	int size_arp = sizeof(struct arphdr);
+	//int size_arp = sizeof(struct arphdr);
 
 	printf("\t=== ARP Header ===\n");
 	printf("\tHardware type : 0x%04x -- ", arp->ar_hrd);
@@ -120,48 +121,150 @@ void arp_viewer(const u_char *packet) {
 
 void ip_viewer(const u_char *packet) {
 	struct ip *ip = (struct ip*)(packet);
-	int size_ip = 32*ip->ip_len;
+	int size_ip = 4*ip->ip_hl;
 
-	void (*next_layer)(const u_char*);
+	void (*next_layer)(const u_char*) = NULL;
 
 	printf("\t=== Ip Header ===\n");
 	printf("\tVersion : %d\n", ip->ip_v);
 	printf("\tIHL : %d\n", ip->ip_hl);
+	printf("\tToS : %d\n", ip->ip_tos);
 	printf("\tTotal length : %d\n", ip->ip_len);
-	printf("\tTime to live : %d\n", ip->ip_ttl);
+	printf("\tIdentification : %d\n", ip->ip_id);
+	// todo offset
+	//printf("\tOffset : %d\n", ip->ip_off);
 
+	printf("\tTime to live : %d\n", ip->ip_ttl);
+	printf("\tProtocol : ");
 	switch(ip->ip_p) {
 		case SOL_UDP:
-			printf("\tProtocol : UDP\n");
+			printf("UDP\n");
 			next_layer = udp_viewer;
 			break;
 		case SOL_TCP:
-			printf("\tProtocol : TCP\n");
+			printf("TCP\n");
 			next_layer = tcp_viewer;
 			break;
+		default:
+			printf("Unknown\n");
+			break;
 	} 
-
+	printf("\tChecksum : %d\n", ip->ip_sum);
 	printf("\tSource : %s\n", inet_ntoa(ip->ip_src));
 	printf("\tDestination : %s\n", inet_ntoa(ip->ip_dst));
 
-	(*next_layer)(packet + size_ip);
+	//todo options
+
+	if(next_layer != NULL)
+		(*next_layer)(packet + size_ip);
 }
 
 // Couche transport
 
 void udp_viewer(const u_char *packet) {
 	struct udphdr* udp = (struct udphdr*)(packet);
-	//int size_udp = sizeof(struct udphdr);
+	int size_udp = sizeof(struct udphdr);
+
+	void (*next_layer)(const u_char*) = NULL;
 
 	printf("\t\t=== UDP Header ===\n");
-	printf("\t\tSource port : %d\n", udp->source);
-	printf("\t\tDestination port : %d\n", udp->dest);
-	printf("\t\tLength : %d\n", udp->len);
+	printf("\t\tSource port : %d\n", ntohs(udp->uh_sport));
+	switch(ntohs(udp->uh_sport)) {
+		case 53:
+			next_layer = dns_viewer;
+			break;
+	}
+	printf("\t\tDestination port : %d\n", ntohs(udp->uh_dport));
+	if(next_layer == NULL) {
+		switch(ntohs(udp->uh_dport)) {
+			case 53:
+				next_layer = dns_viewer;
+				break;
+		}
+	}
+	printf("\t\tLength : %d\n", ntohs(udp->uh_ulen));
+	printf("\t\tChecksum : %d\n", ntohs(udp->uh_sum));
+	// todo check checksum
+
+	printf("\t\tDATA : %s\n", packet+size_udp);
+
+	if(next_layer != NULL)
+		(*next_layer)(packet + size_udp);
 }
 
 void tcp_viewer(const u_char *packet) {
-	//struct tcphdr* tcp = (struct tcphdr*)(packet);
+	struct tcphdr* tcp = (struct tcphdr*)(packet);
+	int size_tcp = tcp->th_off*4;
+
+	void (*next_layer)(const u_char*) = NULL;
+
+	printf("\t\t=== TCP Header ===\n");
+	printf("\t\tSource port : %d\n", ntohs(tcp->th_sport));
+	switch(ntohs(tcp->th_sport)) {
+		case 80:
+			next_layer = http_viewer;
+			break;
+	}
+	printf("\t\tDestination port : %d\n", ntohs(tcp->th_dport));
+	if(next_layer == NULL) {
+		switch(ntohs(tcp->th_dport)) {
+			case 80:
+				next_layer = http_viewer;
+				break;
+		}		
+	}
+	printf("\t\tSequence number : %d\n", ntohs(tcp->th_seq));
+	printf("\t\tAcknowledgment number : %d\n", ntohs(tcp->th_ack));
+	printf("\t\tData offset : %d\n", tcp->th_off);
+	printf("\t\tReserved : %d\n", tcp->th_x2);
+	printf("\t\tFlags : %d\n", tcp->th_flags);
+	// todo flags
+	printf("\t\tWindow : %d\n", tcp->th_win);
+	printf("\t\tChecksum : %d\n", tcp->th_sum);
+	printf("\t\tUrgent pointer : %d\n",tcp->th_urp);
+
+	// todo options
+
+	if(next_layer != NULL)
+		(*next_layer)(packet + size_tcp);
+
 }
 
 
 // Couche application
+
+void bootp_viewer(const u_char *packet) {
+
+}
+
+void dhcp_viewer(const u_char *packet) {
+
+}
+
+void dns_viewer(const u_char *packet) {
+	
+}
+
+void http_viewer(const u_char *packet) {
+	
+}
+
+void ftp_viewer(const u_char *packet) {
+	
+}
+
+void smtp_viewer(const u_char *packet) {
+	
+}
+
+void pop_viewer(const u_char *packet) {
+	
+}
+
+void imap_viewer(const u_char *packet) {
+	
+}
+
+void telnet_viewer(const u_char *packet) {
+	
+}

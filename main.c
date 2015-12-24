@@ -15,6 +15,14 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 	printf("Packet #%d -- timestamp: %ld | length %d bytes\n", n, header->ts.tv_sec, header->len);
 	n++;
 
+	// int i;
+	// for (i = 0; i < header->len; ++i)
+	// {
+	// 	printf("%02x ", packet[i]);
+	// 	if((i+1)%16 == 0)
+	// 		printf("\n");
+	// }
+
 	packet_viewer(packet);
 	printf("\n");
 }
