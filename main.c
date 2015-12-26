@@ -9,11 +9,6 @@
 int n;
 
 void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
-	/* Print its length */
-	//printf("Got one packet, size of [%d] bytes\n", header->len);
-
-	printf("Packet #%d -- timestamp: %ld | length %d bytes\n", n, header->ts.tv_sec, header->len);
-	n++;
 
 	// int i;
 	// for (i = 0; i < header->len; ++i)
@@ -22,9 +17,14 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 	// 	if((i+1)%16 == 0)
 	// 		printf("\n");
 	// }
+	// printf("\n");
 
-	packet_viewer(packet);
-	printf("\n");
+	n++;
+	if(n<5) { 
+		printf("Packet #%d -- timestamp: %ld | length %d bytes\n", n, header->ts.tv_sec, header->len);
+		packet_viewer(packet);
+		printf("\n");
+	}
 }
 
 void usage() {

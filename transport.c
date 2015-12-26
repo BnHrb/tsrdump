@@ -1,0 +1,123 @@
+#include <pcap.h>
+#include <arpa/inet.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+
+#include "application.h"
+
+void udp_viewer(const u_char *packet) {
+	struct udphdr* udp = (struct udphdr*)(packet);
+	int udp_size = sizeof(struct udphdr);
+
+	void (*next_layer)(const u_char*, int) = NULL;
+
+	printf("\t\t=== UDP Header ===\n");
+	printf("\t\tSource port : %d\n", ntohs(udp->uh_sport));
+	switch(ntohs(udp->uh_sport)) {
+		case 53:
+			next_layer = dns_viewer;
+			break;
+		case 67:
+			next_layer = dhcp_viewer;
+			break;
+		case 68:
+			next_layer = dhcp_viewer;
+			break;
+	}
+	printf("\t\tDestination port : %d\n", ntohs(udp->uh_dport));
+	if(next_layer == NULL) {
+		switch(ntohs(udp->uh_dport)) {
+			case 53:
+				next_layer = dns_viewer;
+				break;
+			case 67:
+				next_layer = dhcp_viewer;
+				break;
+			case 68:
+				next_layer = dhcp_viewer;
+				break;
+		}
+	}
+	printf("\t\tLength : %d\n", ntohs(udp->uh_ulen));
+	printf("\t\tChecksum : %d\n", ntohs(udp->uh_sum));
+	// todo check checksum
+
+	//printf("\t\tDATA : %s\n", packet+udp_size);
+
+	if(next_layer != NULL)
+		(*next_layer)(packet + udp_size, (int)(ntohs(udp->uh_ulen) - udp_size));
+}
+
+void tcp_viewer(const u_char *packet, int tcp_size) {
+	struct tcphdr* tcp = (struct tcphdr*)(packet);
+	int tcphdr_size = tcp->th_off*4;
+
+	void (*next_layer)(const u_char*, int) = NULL;
+
+	printf("\t\t=== TCP Header ===\n");
+	printf("\t\tSource port : %d\n", ntohs(tcp->th_sport));
+	switch(ntohs(tcp->th_sport)) {
+		case 80:
+			next_layer = http_viewer;
+			break;
+		case 23:
+			next_layer = telnet_viewer;
+			break;
+		case 25:
+			next_layer = smtp_viewer;
+			break;
+		case 110:
+			next_layer = pop_viewer;
+			break;
+		case 143:
+			next_layer = imap_viewer;
+			break;
+		case 20:
+			next_layer = ftp_viewer;
+			break;
+		case 21:
+			next_layer = ftp_viewer;
+			break;
+	}
+	printf("\t\tDestination port : %d\n", ntohs(tcp->th_dport));
+	if(next_layer == NULL) {
+		switch(ntohs(tcp->th_dport)) {
+			case 80:
+				next_layer = http_viewer;
+				break;
+			case 23:
+				next_layer = telnet_viewer;
+				break;
+			case 25:
+				next_layer = smtp_viewer;
+				break;
+			case 110:
+				next_layer = pop_viewer;
+				break;
+			case 143:
+				next_layer = imap_viewer;
+				break;
+			case 20:
+				next_layer = ftp_viewer;
+				break;
+			case 21:
+				next_layer = ftp_viewer;
+				break;
+		}		
+	}
+	printf("\t\tSequence number : %d\n", ntohs(tcp->th_seq));
+	printf("\t\tAcknowledgment number : %d\n", ntohs(tcp->th_ack));
+	printf("\t\tData offset : %d\n", tcp->th_off);
+	printf("\t\tReserved : %d\n", tcp->th_x2);
+	printf("\t\tFlags : %d\n", tcp->th_flags);
+	// todo flags
+	printf("\t\tWindow : %d\n", tcp->th_win);
+	printf("\t\tChecksum : %d\n", tcp->th_sum);
+	printf("\t\tUrgent pointer : %d\n",tcp->th_urp);
+
+	// todo options
+
+	if(next_layer != NULL)
+		(*next_layer)(packet + tcphdr_size, tcp_size - tcphdr_size);
+
+}
