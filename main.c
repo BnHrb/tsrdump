@@ -20,11 +20,11 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 	// printf("\n");
 
 	n++;
-	if(n<5) { 
+	//if(n<20) { 
 		printf("Packet #%d -- timestamp: %ld | length %d bytes\n", n, header->ts.tv_sec, header->len);
 		packet_viewer(packet);
 		printf("\n");
-	}
+	//}
 }
 
 void usage() {

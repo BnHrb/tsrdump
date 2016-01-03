@@ -44,7 +44,7 @@ void udp_viewer(const u_char *packet) {
 
 	//printf("\t\tDATA : %s\n", packet+udp_size);
 
-	if(next_layer != NULL)
+	if(next_layer != NULL && (int)(ntohs(udp->uh_ulen) - udp_size) > 0)
 		(*next_layer)(packet + udp_size, (int)(ntohs(udp->uh_ulen) - udp_size));
 }
 
@@ -109,15 +109,28 @@ void tcp_viewer(const u_char *packet, int tcp_size) {
 	printf("\t\tAcknowledgment number : %d\n", ntohs(tcp->th_ack));
 	printf("\t\tData offset : %d\n", tcp->th_off);
 	printf("\t\tReserved : %d\n", tcp->th_x2);
-	printf("\t\tFlags : %d\n", tcp->th_flags);
-	// todo flags
+	printf("\t\tFlags : %0x\n", tcp->th_flags);
+
+	if((1<<0) & tcp->th_flags)
+		printf("\t\t - FIN\n");
+	if((1<<1) & tcp->th_flags)
+		printf("\t\t - SYN\n");
+	if((1<<2) & tcp->th_flags)
+		printf("\t\t - RST\n");
+	if((1<<3) & tcp->th_flags)
+		printf("\t\t - PSH\n");
+	if((1<<4) & tcp->th_flags)
+		printf("\t\t - ACK\n");
+	if((1<<5) & tcp->th_flags)
+		printf("\t\t - URG\n");
+
 	printf("\t\tWindow : %d\n", tcp->th_win);
 	printf("\t\tChecksum : %d\n", tcp->th_sum);
 	printf("\t\tUrgent pointer : %d\n",tcp->th_urp);
 
 	// todo options
 
-	if(next_layer != NULL)
+	if(next_layer != NULL && (tcp_size - tcphdr_size) > 0)
 		(*next_layer)(packet + tcphdr_size, tcp_size - tcphdr_size);
 
 }
