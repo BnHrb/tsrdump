@@ -11,35 +11,35 @@ void udp_viewer(const u_char *packet) {
 
 	void (*next_layer)(const u_char*, int) = NULL;
 
-	printf("\t\t=== UDP Header ===\n");
-	printf("\t\tSource port : %d\n", ntohs(udp->uh_sport));
+	printf("\t\t=== UDP ===\n");
+	printf("\t\tSource port: %d\n", ntohs(udp->uh_sport));
 	switch(ntohs(udp->uh_sport)) {
 		case 53:
 			next_layer = dns_viewer;
 			break;
 		case 67:
-			next_layer = dhcp_viewer;
+			next_layer = bootp_viewer;
 			break;
 		case 68:
-			next_layer = dhcp_viewer;
+			next_layer = bootp_viewer;
 			break;
 	}
-	printf("\t\tDestination port : %d\n", ntohs(udp->uh_dport));
+	printf("\t\tDestination port: %d\n", ntohs(udp->uh_dport));
 	if(next_layer == NULL) {
 		switch(ntohs(udp->uh_dport)) {
 			case 53:
 				next_layer = dns_viewer;
 				break;
 			case 67:
-				next_layer = dhcp_viewer;
+				next_layer = bootp_viewer;
 				break;
 			case 68:
-				next_layer = dhcp_viewer;
+				next_layer = bootp_viewer;
 				break;
 		}
 	}
-	printf("\t\tLength : %d\n", ntohs(udp->uh_ulen));
-	printf("\t\tChecksum : %d\n", ntohs(udp->uh_sum));
+	printf("\t\tLength: %d\n", ntohs(udp->uh_ulen));
+	printf("\t\tChecksum: 0x%04x\n", ntohs(udp->uh_sum));
 	// todo check checksum
 
 	//printf("\t\tDATA : %s\n", packet+udp_size);
@@ -54,8 +54,8 @@ void tcp_viewer(const u_char *packet, int tcp_size) {
 
 	void (*next_layer)(const u_char*, int) = NULL;
 
-	printf("\t\t=== TCP Header ===\n");
-	printf("\t\tSource port : %d\n", ntohs(tcp->th_sport));
+	printf("\t\t=== TCP ===\n");
+	printf("\t\tSource port: %d\n", ntohs(tcp->th_sport));
 	switch(ntohs(tcp->th_sport)) {
 		case 80:
 			next_layer = http_viewer;
@@ -79,7 +79,7 @@ void tcp_viewer(const u_char *packet, int tcp_size) {
 			next_layer = ftp_viewer;
 			break;
 	}
-	printf("\t\tDestination port : %d\n", ntohs(tcp->th_dport));
+	printf("\t\tDestination port: %d\n", ntohs(tcp->th_dport));
 	if(next_layer == NULL) {
 		switch(ntohs(tcp->th_dport)) {
 			case 80:
@@ -105,11 +105,11 @@ void tcp_viewer(const u_char *packet, int tcp_size) {
 				break;
 		}		
 	}
-	printf("\t\tSequence number : %d\n", ntohs(tcp->th_seq));
-	printf("\t\tAcknowledgment number : %d\n", ntohs(tcp->th_ack));
-	printf("\t\tData offset : %d\n", tcp->th_off);
-	printf("\t\tReserved : %d\n", tcp->th_x2);
-	printf("\t\tFlags : %0x\n", tcp->th_flags);
+	printf("\t\tSequence number: %d (0x%04x)\n", ntohs(tcp->th_seq), ntohs(tcp->th_seq));
+	printf("\t\tAcknowledgment number: %d\n", ntohs(tcp->th_ack));
+	printf("\t\tData offset: %d\n", tcp->th_off);
+	printf("\t\tReserved: %d\n", tcp->th_x2);
+	printf("\t\tFlags: 0x%02x\n", tcp->th_flags);
 
 	if((1<<0) & tcp->th_flags)
 		printf("\t\t - FIN\n");
@@ -124,9 +124,9 @@ void tcp_viewer(const u_char *packet, int tcp_size) {
 	if((1<<5) & tcp->th_flags)
 		printf("\t\t - URG\n");
 
-	printf("\t\tWindow : %d\n", tcp->th_win);
-	printf("\t\tChecksum : %d\n", tcp->th_sum);
-	printf("\t\tUrgent pointer : %d\n",tcp->th_urp);
+	printf("\t\tWindow: %d\n", tcp->th_win);
+	printf("\t\tChecksum: 0x%04x\n", ntohs(tcp->th_sum));
+	printf("\t\tUrgent pointer: %d\n",tcp->th_urp);
 
 	// todo options
 

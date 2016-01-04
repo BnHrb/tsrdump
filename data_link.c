@@ -11,7 +11,7 @@ void ethernet_viewer(const u_char *packet) {
 
 	void (*next_layer)(const u_char*) = NULL;
 
-	printf("\n=== Ethernet Header ===\n");
+	printf("\n=== Ethernet ===\n");
 	printf("Destination: %02x:%02x:%02x:%02x:%02x:%02x\n", 
 		ethernet->ether_dhost[0],
 		ethernet->ether_dhost[1],
@@ -28,19 +28,24 @@ void ethernet_viewer(const u_char *packet) {
 		ethernet->ether_shost[4],
 		ethernet->ether_shost[5]);
 
+	printf("Type: ");
 	switch(ntohs(ethernet->ether_type)) {
 		case ETHERTYPE_IP:
-			printf("Type : IPv4\n");
+			printf("IPv4 ");
 			next_layer = ip_viewer;
 			break;
 		case ETHERTYPE_IPV6:
-			printf("Type : IPv6\n");
+			printf("IPv6 ");
 			break;
 		case ETHERTYPE_ARP:
-			printf("Type : ARP\n");
+			printf("ARP ");
 			next_layer = arp_viewer;
 			break;
+		default:
+			printf("Unknown ");
+			break;
 	}
+	printf("(0x%04x)\n", ntohs(ethernet->ether_type));
 
 	if(next_layer != NULL)
 		(*next_layer)(packet + size_ethernet);

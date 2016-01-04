@@ -16,35 +16,49 @@ void ip_viewer(const u_char *packet) {
 	void (*next_udp)(const u_char*) = NULL;
 	void (*next_tcp)(const u_char*, int) = NULL;
 
-	printf("\t=== Ip Header ===\n");
-	printf("\tVersion : %d\n", ip->ip_v);
-	printf("\tIHL : %d\n", ip->ip_hl);
-	printf("\tToS : %d\n", ip->ip_tos);
-	printf("\tTotal length : %d\n", ntohs(ip->ip_len));
-	printf("\tIdentification : %d\n", ntohs(ip->ip_id));
+	printf("\t=== IPv4 ===\n");
+	printf("\tVersion: %d\n", ip->ip_v);
+	printf("\tIHL: %d (%d bytes)\n", ip->ip_hl, ip->ip_hl*4);
+	printf("\tToS: 0x%02x\n", ip->ip_tos);
+	printf("\tTotal length: %d bytes\n", ntohs(ip->ip_len));
+	printf("\tIdentification: 0x%04x (%d)\n", ntohs(ip->ip_id), ntohs(ip->ip_id));
+	printf("\tFlags: ");
+	if(ip->ip_off != 0) {
+		if(ip->ip_off>>6 & 1)
+			printf("don't fragment\n");
+		else if(ip->ip_off>>5 & 1)
+			printf("more fragment\n");
+		else
+			printf("none set\n");
+	}
+	else {
+		printf("none set\n");
+	}
 	// todo offset
-	//printf("\tOffset : %d\n", ip->ip_off);
 
-	printf("\tTime to live : %d\n", ip->ip_ttl);
-	printf("\tProtocol : ");
+	printf("\tTime to live: %d\n", ip->ip_ttl);
+	printf("\tProtocol: ");
 	switch(ip->ip_p) {
 		case SOL_UDP:
-			printf("UDP\n");
+			printf("UDP ");
 			next_udp = udp_viewer;
 			break;
 		case SOL_TCP:
-			printf("TCP\n");
+			printf("TCP ");
 			next_tcp = tcp_viewer;
 			break;
 		default:
-			printf("Unknown\n");
+			printf("Unknown ");
 			break;
 	} 
-	printf("\tChecksum : %d\n", ip->ip_sum);
-	printf("\tSource : %s\n", inet_ntoa(ip->ip_src));
-	printf("\tDestination : %s\n", inet_ntoa(ip->ip_dst));
+	printf("(0x%02x)\n", ip->ip_p);
+	printf("\tChecksum: 0x%04x\n", ntohs(ip->ip_sum));
+	printf("\tSource: %s\n", inet_ntoa(ip->ip_src));
+	printf("\tDestination: %s\n", inet_ntoa(ip->ip_dst));
 
-	//todo options
+	if(ip->ip_hl > 5) {
+		//todo options
+	}
 
 	if(next_udp != NULL)
 		(*next_udp)(packet + ip_size);
@@ -56,8 +70,8 @@ void arp_viewer(const u_char *packet) {
 	struct arphdr *arp = (struct arphdr*)(packet);
 	int arp_size = sizeof(struct arphdr);
 
-	printf("\t=== ARP Header ===\n");
-	printf("\tHardware type : 0x%04x -- ", arp->ar_hrd);
+	printf("\t=== ARP ===\n");
+	printf("\tHardware type: 0x%04x -- ", arp->ar_hrd);
 	switch(ntohs(arp->ar_hrd)) {
 		case ARPHRD_ETHER:
 			printf("Ethernet 10/100Mbps\n");
@@ -66,7 +80,7 @@ void arp_viewer(const u_char *packet) {
 			printf("Unknown\n");
 			break;
 	}
-	printf("\tProtocol type : 0x%04x -- ", arp->ar_pro);
+	printf("\tProtocol type: 0x%04x -- ", arp->ar_pro);
 	switch(ntohs(arp->ar_pro)) {
 		case ETHERTYPE_IP:
 			printf("IPv4\n");
@@ -78,8 +92,8 @@ void arp_viewer(const u_char *packet) {
 			printf("Unknown\n");
 			break;
 	}
-	printf("\tHardware address length : %d bytes\n", arp->ar_hln);
-	printf("\tProtocol address length : %d bytes\n", arp->ar_pln);
+	printf("\tHardware address length: %d bytes\n", arp->ar_hln);
+	printf("\tProtocol address length: %d bytes\n", arp->ar_pln);
 	printf("\tOperation : ");
 	switch(ntohs(arp->ar_op)) {
 		case ARPOP_REQUEST:
@@ -110,7 +124,7 @@ void arp_viewer(const u_char *packet) {
 
 	struct arpaddr *arpaddr = (struct arpaddr*)(packet + arp_size);
 
-	printf("\tSender hardware address : %02x:%02x:%02x:%02x:%02x:%02x\n", 
+	printf("\tSender hardware address: %02x:%02x:%02x:%02x:%02x:%02x\n", 
 		arpaddr->ar_sha[0],
 		arpaddr->ar_sha[1],		
 		arpaddr->ar_sha[2],
@@ -118,13 +132,13 @@ void arp_viewer(const u_char *packet) {
 		arpaddr->ar_sha[4],
 		arpaddr->ar_sha[5]
 	);
-	printf("\tSender protocol address : %d.%d.%d.%d\n", 
+	printf("\tSender protocol address: %d.%d.%d.%d\n", 
 		arpaddr->ar_spa[0],
 		arpaddr->ar_spa[1],
 		arpaddr->ar_spa[2],
 		arpaddr->ar_spa[3]
 	);
-	printf("\tTarget hardware address : %02x:%02x:%02x:%02x:%02x:%02x\n", 
+	printf("\tTarget hardware address: %02x:%02x:%02x:%02x:%02x:%02x\n", 
 		arpaddr->ar_tha[0],
 		arpaddr->ar_tha[1],		
 		arpaddr->ar_tha[2],
@@ -132,7 +146,7 @@ void arp_viewer(const u_char *packet) {
 		arpaddr->ar_tha[4],
 		arpaddr->ar_tha[5]
 	);
-	printf("\tSender protocol address : %d.%d.%d.%d\n", 
+	printf("\tSender protocol address: %d.%d.%d.%d\n", 
 		arpaddr->ar_tpa[0],
 		arpaddr->ar_tpa[1],
 		arpaddr->ar_tpa[2],

@@ -19,12 +19,13 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 	// }
 	// printf("\n");
 
+
 	n++;
-	//if(n<20) { 
+	if(n<2) { 
 		printf("Packet #%d -- timestamp: %ld | length %d bytes\n", n, header->ts.tv_sec, header->len);
 		packet_viewer(packet);
 		printf("\n");
-	//}
+	}
 }
 
 void usage() {
@@ -43,7 +44,6 @@ int main(int argc, char *argv[])
 
 	n = 0;
 	int c;
-	extern char * optarg;
 	char* file = NULL;
 
 	while((c = getopt(argc, argv, "i:o:f:v:h")) != -1) {

@@ -4,13 +4,257 @@
 
 #include "application.h"
 
-void dhcp_viewer(const u_char *packet, int data_size) {
-	int i;
+void bootp_viewer(const u_char *packet, int data_size) {
+	struct bootphdr *bootp = (struct bootphdr*)(packet);
+	int i,j,l;
+	u_int32_t tmp;
 
-	printf("\t\t\t=== DHCP ===\n");
-	for (i = 0; i < data_size; ++i) 
-	{
-		printf("%c", packet[i]);	
+	printf("\t\t\t=== BOOTP ===\n");
+	printf("\t\t\tMessage type : ");
+	switch(bootp->msg_type) {
+		case 1:
+			printf("Request\n");
+			break;
+		case 2:
+			printf("Reply\n");
+			break;
+		default:
+			printf("Unknown\n");
+			break;
+	}
+	printf("\t\t\tHardware type : ");
+	switch(bootp->hrdwr_type) {
+		case 1:
+			printf("Ethernet\n");
+			break;
+		case 6:
+			printf("IEEE 802\n");
+			break;
+		case 18:
+			printf("Fibre channel\n");
+			break;
+		case 20:
+			printf("Serial line\n");
+			break;
+		default:
+			printf("Unknown\n");
+			break;
+	}
+	printf("\t\t\tHardware address length : %d bytes\n", bootp->hrdwr_addr_length);
+	printf("\t\t\tHops : %d\n", bootp->hops);
+	printf("\t\t\tTransaction ID : 0x%08x\n", ntohl(bootp->trans_id));
+	printf("\t\t\tSeconds elapsed : %d\n", ntohs(bootp->num_sec));
+	printf("\t\t\tClient IP address : %s\n", inet_ntoa(bootp->ciaddr));
+	printf("\t\t\tYour IP address : %s\n", inet_ntoa(bootp->yiaddr));
+	printf("\t\t\tNext server IP address : %s\n", inet_ntoa(bootp->siaddr));
+	printf("\t\t\tRelay agent IP address : %s\n", inet_ntoa(bootp->giaddr));
+	if(bootp->hrdwr_addr_length == 6) {
+		printf("\t\t\tClient MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n", 
+			bootp->hrdwr_caddr[0],
+			bootp->hrdwr_caddr[1],
+			bootp->hrdwr_caddr[2],
+			bootp->hrdwr_caddr[3],
+			bootp->hrdwr_caddr[4],
+			bootp->hrdwr_caddr[5]);
+		printf("\t\t\tClient hardware address padding : ");
+		for(i=6; i<16;i++) {
+			printf("%02x", bootp->hrdwr_caddr[i]);
+		}
+		printf("\n");
+	}
+	else {
+		printf("\t\t\tClient hardware address unknown : ");
+		for(i=0; i<16; i++) {
+			printf("%02x", bootp->hrdwr_caddr[i]);
+		}
+		printf("\n");
+	}
+	printf("\t\t\tServer host name : ");
+	if(bootp->srv_name[0] != 0) {
+		for(i=0; i<64 && bootp->srv_name[i] != 0; i++) {
+			printf("%c", bootp->srv_name[i]);
+		}
+		printf("\n");
+	}
+	else {
+		printf("not given\n");
+	}
+	printf("\t\t\tBoot file name : ");
+	if(bootp->bpfile_name[0] != 0) {
+		for(i=0; i<128 && bootp->bpfile_name[i] != 0; i++) {
+			printf("%c", bootp->bpfile_name[i]);
+		}
+		printf("\n");
+	}
+	else {
+		printf("not given\n");
+	}
+
+	if(ntohl(bootp->magic_cookie) == 0x63825363) {
+		printf("\t\t\tMagic cookie : DHCP\n");
+		for(i = sizeof(struct bootphdr); i < data_size && packet[i] != 0xff; i++) {
+			printf("\t\t\tOption : ");
+			switch((int)packet[i]) {
+				case 53: // length 1
+					printf("DHCP message type ");
+					i++;
+					l = (int)packet[i];
+					i++;
+					switch((int)packet[i]) {
+						case 1:
+							printf("discover");
+							break;
+						case 2:
+							printf("offer");
+							break;
+						case 3:
+							printf("request");
+							break;
+						case 4:
+							printf("decline");
+							break;
+						case 5:
+							printf("ack");
+							break;
+						case 6:
+							printf("nack");
+							break;
+						case 7:
+							printf("release");
+							break;
+						default:
+							printf("unknown");
+							break;
+					}
+					i+=l-1;
+					printf("\n");
+					break;
+				case 58: // length 4
+					printf("Renewal time value ");
+					i++;
+					l = (int)packet[i];
+					i++;
+					tmp = packet[i] << 24 | packet[i+1] << 16 | packet[i+2] << 8 | packet[i+3];
+					printf("%ds\n", tmp);
+					i+=l-1;
+					break;
+				case 59: // length 4
+					printf("Rebinding time value ");
+					i++;
+					l = (int)packet[i];
+					i++;
+					tmp = packet[i] << 24 | packet[i+1] << 16 | packet[i+2] << 8 | packet[i+3];
+					printf("%ds\n", tmp);
+					i+=l-1;
+					break;
+				case 50:
+					printf("Requested IP address ");
+					i++;
+					l = (int)packet[i];
+					i++;
+					printf("%d.%d.%d.%d\n", 
+						packet[i],
+						packet[i+1],
+						packet[i+2],
+						packet[i+3]);
+					i+=l-1;
+					break;
+				case 51: // length 4
+					printf("IP address lease time ");
+					i++;
+					l = (int)packet[i];
+					i++;
+					tmp = packet[i] << 24 | packet[i+1] << 16 | packet[i+2] << 8 | packet[i+3];
+					printf("%ds\n", tmp);
+					i+=l-1;
+					break;
+				case 1: // length 4
+					printf("Subnet mask ");
+					i++;
+					l = (int)packet[i];
+					i++;
+					printf("%d.%d.%d.%d\n", 
+						packet[i],
+						packet[i+1],
+						packet[i+2],
+						packet[i+3]);
+					i+=l-1;
+					break;
+				case 54: // length 4
+					printf("DHCP server identifier ");
+					i++;
+					l = (int)packet[i];
+					i++;
+					printf("%d.%d.%d.%d\n", 
+						packet[i],
+						packet[i+1],
+						packet[i+2],
+						packet[i+3]);
+					i+=l-1;				
+					break;
+				case 55: // length variable
+					printf("Parameter request list");
+					i++;
+					for(j=0;j<(int)packet[i];j++) {
+						switch(packet[i+j+1]) {
+							case 1:
+								printf(" subnet mask");
+								break;
+							case 3:
+								printf(" router");
+								break;
+							case 6:
+								printf(" domain name server");
+								break;
+							case 42:
+								printf(" network time protocol servers");
+								break;
+							default:
+								printf(" unknown");
+								break;
+						}
+						if(j != (int)packet[i]-1)
+							printf(",");
+					}
+					i+=((int)packet[i]);
+					printf("\n");
+					break;
+				case 61:
+					printf("Client identifier ");
+					i++;
+					l = (int)packet[i];
+					i++;
+					if((int)packet[i] == 1) {
+						printf("%02x.%02x.%02x.%02x.%02x.%02x\n", 
+							packet[i+1],
+							packet[i+2],
+							packet[i+3],
+							packet[i+4],
+							packet[i+5],
+							packet[i+6]);
+					}
+					else {
+						printf("unknown identifier\n");
+					}
+					i += l-1;
+					break;
+				default:
+					printf("Unknown (0x%02x)\n", packet[i]);
+					i++;
+					printf("\t\t\t\tLength : %d bytes\n", (int)packet[i]);
+					printf("\t\t\t\tValue : 0x");
+					for(j=0; j<(int)packet[i];j++) {
+						printf("%02x", packet[i+j+1]);
+					}
+					printf("\n");
+					i+=j;
+					break;
+			}
+			// and so on...
+		}
+	}
+	else {
+		printf("Vendor specific : not given\n");
 	}
 
 	printf("\n");	
@@ -205,8 +449,11 @@ void imap_viewer(const u_char *packet, int data_size) {
 	int i;
 
 	printf("\t\t\t=== IMAP ===\n");
+	printf("\t\t\t");
 	for (i = 0; i < data_size; ++i) 
 	{
+		if(packet[i-1] == '\n')
+			printf("\t\t\t");
 		printf("%c", packet[i]);	
 	}
 
