@@ -8,5 +8,5 @@ struct arpaddr
 	unsigned char ar_tpa[IP_ALEN];
 };
 
-void ip_viewer(const u_char*);
-void arp_viewer(const u_char*);
+void ip_viewer(const u_char*, u_char);
+void arp_viewer(const u_char*, u_char);

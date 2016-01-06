@@ -4,14 +4,17 @@
 #include <netinet/udp.h>
 
 #include "application.h"
+#include "verbose.h"
 
-void udp_viewer(const u_char *packet) {
+void udp_viewer(const u_char *packet, u_char verbose) {
 	struct udphdr* udp = (struct udphdr*)(packet);
 	int udp_size = sizeof(struct udphdr);
 
 	void (*next_layer)(const u_char*, int) = NULL;
 
+	printf("\033[1m");
 	printf("\t\t=== UDP ===\n");
+	printf("\033[0m");
 	printf("\t\tSource port: %d\n", ntohs(udp->uh_sport));
 	switch(ntohs(udp->uh_sport)) {
 		case 53:
@@ -38,23 +41,24 @@ void udp_viewer(const u_char *packet) {
 				break;
 		}
 	}
-	printf("\t\tLength: %d\n", ntohs(udp->uh_ulen));
-	printf("\t\tChecksum: 0x%04x\n", ntohs(udp->uh_sum));
-	// todo check checksum
-
-	//printf("\t\tDATA : %s\n", packet+udp_size);
+	if(verbose & (MID|HIGH))
+		printf("\t\tLength: %d\n", ntohs(udp->uh_ulen));
+	if(verbose & HIGH)
+		printf("\t\tChecksum: 0x%04x\n", ntohs(udp->uh_sum));
 
 	if(next_layer != NULL && (int)(ntohs(udp->uh_ulen) - udp_size) > 0)
 		(*next_layer)(packet + udp_size, (int)(ntohs(udp->uh_ulen) - udp_size));
 }
 
-void tcp_viewer(const u_char *packet, int tcp_size) {
+void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 	struct tcphdr* tcp = (struct tcphdr*)(packet);
-	int tcphdr_size = tcp->th_off*4;
+	int i, j, tmp, tcphdr_size = tcp->th_off*4;
 
 	void (*next_layer)(const u_char*, int) = NULL;
 
+	printf("\033[1m");
 	printf("\t\t=== TCP ===\n");
+	printf("\033[0m");
 	printf("\t\tSource port: %d\n", ntohs(tcp->th_sport));
 	switch(ntohs(tcp->th_sport)) {
 		case 80:
@@ -105,30 +109,90 @@ void tcp_viewer(const u_char *packet, int tcp_size) {
 				break;
 		}		
 	}
-	printf("\t\tSequence number: %d (0x%04x)\n", ntohs(tcp->th_seq), ntohs(tcp->th_seq));
-	printf("\t\tAcknowledgment number: %d\n", ntohs(tcp->th_ack));
-	printf("\t\tData offset: %d\n", tcp->th_off);
-	printf("\t\tReserved: %d\n", tcp->th_x2);
-	printf("\t\tFlags: 0x%02x\n", tcp->th_flags);
 
-	if((1<<0) & tcp->th_flags)
+	if(verbose & (MID|HIGH)) {
+		printf("\t\tSequence number: %d (0x%04x)\n", ntohs(tcp->th_seq), ntohs(tcp->th_seq));
+		printf("\t\tAcknowledgment number: %d\n", ntohs(tcp->th_ack));
+		printf("\t\tHeader length: %d bytes\n", tcphdr_size);
+		printf("\t\tFlags: 0x%02x\n", tcp->th_flags);
+	}
+	else {
+		printf("\t\tFlags: \n");
+	}
+
+	if(TH_FIN & tcp->th_flags)
 		printf("\t\t - FIN\n");
-	if((1<<1) & tcp->th_flags)
+	if(TH_SYN & tcp->th_flags)
 		printf("\t\t - SYN\n");
-	if((1<<2) & tcp->th_flags)
+	if(TH_RST & tcp->th_flags)
 		printf("\t\t - RST\n");
-	if((1<<3) & tcp->th_flags)
+	if(TH_PUSH & tcp->th_flags)
 		printf("\t\t - PSH\n");
-	if((1<<4) & tcp->th_flags)
+	if(TH_ACK & tcp->th_flags)
 		printf("\t\t - ACK\n");
-	if((1<<5) & tcp->th_flags)
+	if(TH_URG & tcp->th_flags)
 		printf("\t\t - URG\n");
 
-	printf("\t\tWindow: %d\n", tcp->th_win);
-	printf("\t\tChecksum: 0x%04x\n", ntohs(tcp->th_sum));
-	printf("\t\tUrgent pointer: %d\n",tcp->th_urp);
+	if(verbose & HIGH) {
+		printf("\t\tWindow: %d\n", ntohs(tcp->th_win));
+		printf("\t\tChecksum: 0x%04x\n", ntohs(tcp->th_sum));
+		printf("\t\tUrgent pointer: %d\n",ntohs(tcp->th_urp));
+	}
 
-	// todo options
+	if(tcp_size > sizeof(struct tcphdr)) {
+		if(verbose & HIGH) {
+			printf("\t\tOptions:\n");
+			for(i=sizeof(struct tcphdr); i<tcphdr_size && packet[i] != 0x00; i++) {
+				switch(packet[i]) {
+					case 1:
+						printf("\t\t - NOP\n");
+						break;
+					case 2:
+						printf("\t\t - Type: maximum segment size (%d)\n", packet[i]);
+						printf("\t\t   Length: %d\n", packet[i+1]);
+						tmp = packet[i+2]<<8 | packet[i+3];
+						printf("\t\t   MSS value: %d\n", tmp);
+						i += (int)packet[i+1]-1;
+						break;
+					case 3:
+						printf("\t\t - Type: windows scale (%d)\n", packet[i]);
+						printf("\t\t   Length: %d\n", packet[i+1]);
+						printf("\t\t   windows scale value: %d\n", packet[i+2]);
+						i += (int)packet[i+1]-1;
+						break;
+					case 4:
+						printf("\t\t - Type: SACK permited\n");
+						printf("\t\t   Length: %d\n", packet[i+1]);
+						i += (int)packet[i+1]-1;
+						break;
+					case 8:
+						printf("\t\t - Type: timestamps(%d)\n", packet[i]);
+						printf("\t\t   Length: %d\n", packet[i+1]);
+						tmp = packet[i+2] << 24 | packet[i+3] << 16 | packet[i+4] << 8 | packet[i+5];
+						printf("\t\t   timestamps value: %d\n", tmp);
+						tmp = packet[i+6] << 24 | packet[i+7] << 16 | packet[i+8] << 8 | packet[i+9];
+						printf("\t\t   timestamps echo reply: %d\n", tmp);
+						i += (int)packet[i+1]-1;	
+						break;
+					default:
+						printf("\t\t - Type: unknown (%d)\n", packet[i]);
+						printf("\t\t   Length %d\n", packet[i+1]);
+						if((int)packet[i+1]>2) {
+							printf("\t\t   Value 0x");
+							for(j=2; j<(int)packet[i+1]; j++) {
+								printf("%02x", packet[j+i]);
+							}
+							printf("\n");
+						}
+						i += (int)packet[i+1]-1;
+						break;
+				}
+			}
+		}
+		else if(verbose & MID) {
+			printf("\t\tOptions: %ld bytes\n", tcp_size - sizeof(struct tcphdr));
+		}
+	}
 
 	if(next_layer != NULL && (tcp_size - tcphdr_size) > 0)
 		(*next_layer)(packet + tcphdr_size, tcp_size - tcphdr_size);

@@ -1,1 +1,1 @@
-void packet_viewer(const u_char*);
+void packet_viewer(const u_char*, u_char);
