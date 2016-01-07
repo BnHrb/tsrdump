@@ -6,6 +6,7 @@
 #include "application.h"
 #include "verbose.h"
 
+// gestion des paquets bootp / dhcp
 void bootp_viewer(const u_char *packet, int data_size, u_char verbose) {
 	struct bootphdr *bootp = (struct bootphdr*)(packet);
 	int i,j,l;
@@ -332,6 +333,8 @@ void bootp_viewer(const u_char *packet, int data_size, u_char verbose) {
 
 }
 
+
+// gestion des paquets dns
 void dns_viewer(const u_char *packet, int data_size, u_char verbose) {
 	struct dnshdr *dns = (struct dnshdr*)(packet);
 	int i, j = 0, k, questions, answers;
@@ -495,6 +498,7 @@ void dns_viewer(const u_char *packet, int data_size, u_char verbose) {
 }
 
 
+// gestion des paquets http
 void http_viewer(const u_char *packet, int data_size, u_char verbose) {
 	int i;
 
@@ -535,6 +539,7 @@ void http_viewer(const u_char *packet, int data_size, u_char verbose) {
 	}
 }
 
+// gestion des paquets ftp
 void ftp_viewer(const u_char *packet, int data_size, u_char verbose) {
 	int i;
 
@@ -566,6 +571,7 @@ void ftp_viewer(const u_char *packet, int data_size, u_char verbose) {
 
 }
 
+// gestion des paquets smtp
 void smtp_viewer(const u_char *packet, int data_size, u_char verbose) {
 	int i;
 
@@ -599,6 +605,7 @@ void smtp_viewer(const u_char *packet, int data_size, u_char verbose) {
 
 }
 
+// gestion des paquets pop
 void pop_viewer(const u_char *packet, int data_size, u_char verbose) {
 	int i;
 
@@ -631,6 +638,7 @@ void pop_viewer(const u_char *packet, int data_size, u_char verbose) {
 	}
 }
 
+// gestion des paquets imap
 void imap_viewer(const u_char *packet, int data_size, u_char verbose) {
 	int i;
 
@@ -664,6 +672,7 @@ void imap_viewer(const u_char *packet, int data_size, u_char verbose) {
 	}	
 }
 
+// gestion des paquets telnet
 void telnet_viewer(const u_char *packet, int data_size, u_char verbose) {
 	int i = 0, f = 1;
 

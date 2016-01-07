@@ -6,12 +6,14 @@
 #include "application.h"
 #include "verbose.h"
 
+// gestion des paquets udp
 void udp_viewer(const u_char *packet, u_char verbose) {
 	struct udphdr* udp = (struct udphdr*)(packet);
 	int udp_size = sizeof(struct udphdr);
 
 	void (*next_layer)(const u_char*, int, u_char) = NULL;
 
+	// si verbose 2 et 3
 	if(verbose & (MID|HIGH)) {
 		printf("\033[1m");
 		printf("\t\t=== UDP ===\n");
@@ -49,13 +51,16 @@ void udp_viewer(const u_char *packet, u_char verbose) {
 	if(verbose & HIGH)
 		printf("\t\tChecksum: 0x%04x\n", ntohs(udp->uh_sum));
 
+	// si verbose 1
 	if(verbose & LOW) 
 		printf(" > (UDP) %d -> %d ", ntohs(udp->uh_sport), ntohs(udp->uh_dport));
 
 	if(next_layer != NULL && (int)(ntohs(udp->uh_ulen) - udp_size) > 0)
-		(*next_layer)(packet + udp_size, (int)(ntohs(udp->uh_ulen) - udp_size), verbose);
+		(*next_layer)(packet + udp_size, (int)(ntohs(udp->uh_ulen) - udp_size), verbose); // appel de la couche supérieure 
 }
 
+
+// gestion des paquets tcp
 void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 	struct tcphdr* tcp = (struct tcphdr*)(packet);
 	int i, j, tmp, tcphdr_size = tcp->th_off*4;
@@ -66,7 +71,7 @@ void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 		printf("\033[1m");
 		printf("\t\t=== TCP ===\n");
 		printf("\033[0m");
-		printf("\t\tSource port: %d\n", ntohs(tcp->th_sport));
+		printf("\t\tSource port: %d\n", ntohs(tcp->th_sport)); // port source 
 	}
 	switch(ntohs(tcp->th_sport)) {
 		case 80:
@@ -92,7 +97,7 @@ void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 			break;
 	}
 	if(verbose & (MID|HIGH))
-		printf("\t\tDestination port: %d\n", ntohs(tcp->th_dport));
+		printf("\t\tDestination port: %d\n", ntohs(tcp->th_dport)); // port destination
 	if(next_layer == NULL) {
 		switch(ntohs(tcp->th_dport)) {
 			case 80:
@@ -206,6 +211,7 @@ void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 		}
 	}
 
+	// si verbose 1
 	if(verbose & LOW) {
 		printf(" > (TCP) %d -> %d (", ntohs(tcp->th_sport), ntohs(tcp->th_dport));
 		if(TH_FIN & tcp->th_flags)
@@ -225,6 +231,6 @@ void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 	}
 
 	if(next_layer != NULL && (tcp_size - tcphdr_size) > 0)
-		(*next_layer)(packet + tcphdr_size, tcp_size - tcphdr_size, verbose);
+		(*next_layer)(packet + tcphdr_size, tcp_size - tcphdr_size, verbose); // appel de la couche supérieure
 
 }

@@ -13,57 +13,52 @@
 int n;
 pcap_t *handle;
 
+
+// gestion du signal d'arrêt
 static void signal_handler(int signo) {
     pcap_breakloop(handle);
 }
 
+// gestion des paquets
 void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
 	struct tm *ts;
 	char buf[80];
-	// int i;
-	// for (i = 0; i < header->len; ++i)
-	// {
-	// 	printf("%02x ", packet[i]);
-	// 	if((i+1)%16 == 0)
-	// 		printf("\n");
-	// }
-	// printf("\n");
-
 
 	n++;
-	//if(n<3) { 
-		ts = localtime(&(header->ts.tv_sec));
-		strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
-		if(*args & LOW)
-			printf("#%d: ", n);
-		else 
-			printf("Packet #%d -- %s | length %d bytes\n", n, buf, header->len);
-		ethernet_viewer(packet, *args);
-		printf("\n");
-	//}
+	ts = localtime(&(header->ts.tv_sec));
+	strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
+	if(*args & LOW)
+		printf("#%d: ", n);
+	else 
+		printf("Packet #%d -- %s | length %d bytes\n", n, buf, header->len);
+	ethernet_viewer(packet, *args);
+	printf("\n");
 }
 
+// affichage de l'aide
 void usage() {
-	printf("usage \n");
+	printf("usage: ./tsrdump\n\t-i <interface>\n\t-o <file>\n\t-f <filter>\n\t-v <1..3>\n");
 }
 
 int main(int argc, char *argv[])
 {
-	char errbuf[PCAP_ERRBUF_SIZE];	/* Error string */
-	struct bpf_program fp;		/* The compiled filter */
-	bpf_u_int32 mask;		/* Our netmask */
-	bpf_u_int32 net;		/* Our IP */
+	char errbuf[PCAP_ERRBUF_SIZE];
+	struct bpf_program fp;
+	bpf_u_int32 mask;
+	bpf_u_int32 net;
 
 	n = 0;
 	int tmp, verbose = HIGH;
 	char c;
 	char *file = NULL, *filter = NULL, *dev = NULL;
 
+	// gestion du signal d'arrêt
     if (signal(SIGINT, signal_handler) == SIG_ERR) {
         printf("An error occurred while setting a signal handler.\n");
         return -1;
     }
 
+    // gestion des options
 	while((c = getopt(argc, argv, "i:o:f:v:h")) != -1) {
 		switch(c) {
 			case 'i':
@@ -96,6 +91,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+
+	// interface par default
 	if(dev == NULL) {
 		dev = pcap_lookupdev(errbuf);
 		if (dev == NULL) {
@@ -104,7 +101,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* Find the properties for the device */
+	// récupération du masque
 	if (pcap_lookupnet(dev, &net, &mask, errbuf) == -1) {
 		fprintf(stderr, "Couldn't get netmask for device %s: %s\n", dev, errbuf);
 		net = 0;
@@ -112,13 +109,13 @@ int main(int argc, char *argv[])
 	}
 
 	if(file == NULL) {
-		/* Open the session in promiscuous mode */
+		// ouverture de la session live
 		handle = pcap_open_live(dev, BUFSIZ, 1, 0, errbuf);
 		if (handle == NULL) {
 			fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
 			return -1;
 		}
-		/* Compile and apply the filter */
+		// compilation et application du filtre si il y a
 		if(filter != NULL) {
 			if (pcap_compile(handle, &fp, filter, 0, net) == -1) {
 				fprintf(stderr, "Couldn't parse filter %s: %s\n", filter, pcap_geterr(handle));
@@ -141,10 +138,10 @@ int main(int argc, char *argv[])
 
 	printf("Device: %s\n\n", dev);
 
-	/* Loop */
+	// boucle sur les paquets
 	pcap_loop(handle, -1, packet_handler, (u_char*)&verbose);
-	/* And close the session */
 	printf("\n\n%d packet captured\n", n);
+	// fermeture de la session
 	pcap_close(handle);
 	return 0;
 }

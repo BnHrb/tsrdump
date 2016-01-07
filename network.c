@@ -10,6 +10,7 @@
 #include "transport.h"
 #include "verbose.h"
 
+// gestion des paquets IPv4
 void ip_viewer(const u_char *packet, u_char verbose) {
 	struct ip *ip = (struct ip*)(packet);
 	int i, j, ip_size = 4*ip->ip_hl;
@@ -17,18 +18,23 @@ void ip_viewer(const u_char *packet, u_char verbose) {
 	void (*next_udp)(const u_char*, u_char) = NULL;
 	void (*next_tcp)(const u_char*, int, u_char) = NULL;
 
+	// si verbose 2 et 3
 	if(verbose & (MID|HIGH)) {
 		printf("\033[1m");
 		printf("\t=== IPv4 ===\n");
 		printf("\033[0m");
 
+		// ip version
 		printf("\tVersion: %d\n", ip->ip_v);
+		// ihl
 		printf("\tIHL: %d (%d bytes)\n", ip->ip_hl, ip->ip_hl*4);
 		if(verbose & HIGH)
-			printf("\tToS: 0x%02x\n", ip->ip_tos);
+			printf("\tToS: 0x%02x\n", ip->ip_tos); // TOS
+		// longueur total
 		printf("\tTotal length: %d bytes\n", ntohs(ip->ip_len));
 		if(verbose & HIGH)
-			printf("\tIdentification: 0x%04x (%d)\n", ntohs(ip->ip_id), ntohs(ip->ip_id));
+			printf("\tIdentification: 0x%04x (%d)\n", ntohs(ip->ip_id), ntohs(ip->ip_id)); // id 
+		// flags
 		printf("\tFlags: ");
 		if(ntohs(ip->ip_off) & IP_RF) 
 			printf("reserved bit\n");
@@ -38,8 +44,11 @@ void ip_viewer(const u_char *packet, u_char verbose) {
 			printf("more fragment (fragment offset: %d)\n", (ntohs(ip->ip_off) & IP_OFFMASK)*8);
 		else
 			printf("none set\n");
+
 		if(verbose & HIGH)
-			printf("\tTime to live: %d\n", ip->ip_ttl);
+			printf("\tTime to live: %d\n", ip->ip_ttl); // TTL
+
+		// protocole de la prochaine couche
 		printf("\tProtocol: ");
 		switch(ip->ip_p) {
 			case 0x01:
@@ -59,15 +68,15 @@ void ip_viewer(const u_char *packet, u_char verbose) {
 		} 
 		if(verbose & HIGH) {
 			printf("(0x%02x)\n", ip->ip_p);
-			printf("\tChecksum: 0x%04x\n", ntohs(ip->ip_sum));
+			printf("\tChecksum: 0x%04x\n", ntohs(ip->ip_sum)); // checksum
 		}
 		else
 			printf("\n");
 
-		printf("\tSource: %s\n", inet_ntoa(ip->ip_src));
-		printf("\tDestination: %s\n", inet_ntoa(ip->ip_dst));
+		printf("\tSource: %s\n", inet_ntoa(ip->ip_src)); // adresse source
+		printf("\tDestination: %s\n", inet_ntoa(ip->ip_dst)); // adresse destination
 	}
-	else {
+	else { // si verbose 1
 		printf("> (IPv4) %s -> %s ", inet_ntoa(ip->ip_src), inet_ntoa(ip->ip_dst));
 
 		switch(ip->ip_p) {
@@ -80,6 +89,7 @@ void ip_viewer(const u_char *packet, u_char verbose) {
 		} 		
 	}
 
+	// si verbose 3 affichage des options
 	if(verbose & HIGH) {
 		if(ip->ip_hl > 5) {
 			printf("\tOptions:\n");
@@ -101,20 +111,24 @@ void ip_viewer(const u_char *packet, u_char verbose) {
 	}
 
 	if(next_udp != NULL)
-		(*next_udp)(packet + ip_size, verbose);
+		(*next_udp)(packet + ip_size, verbose); // appel de la couche udp
 	else if(next_tcp != NULL)
-		(*next_tcp)(packet + ip_size, ntohs(ip->ip_len) - ip_size, verbose);
+		(*next_tcp)(packet + ip_size, ntohs(ip->ip_len) - ip_size, verbose); // appel de la couche tcp
 }
 
+
+// gestion des paquets ARP
 void arp_viewer(const u_char *packet, u_char verbose) {
 	struct arphdr *arp = (struct arphdr*)(packet);
 	int arp_size = sizeof(struct arphdr);
 
+	// si verbose 2 et 3
 	if(verbose & (MID|HIGH)) {
 		printf("\033[1m");
 		printf("\t=== ARP ===\n");
 		printf("\033[0m");
 
+		// hardware type
 		printf("\tHardware type: ");
 		switch(ntohs(arp->ar_hrd)) {
 			case ARPHRD_ETHER:
@@ -129,6 +143,7 @@ void arp_viewer(const u_char *packet, u_char verbose) {
 		else
 			printf("\n");
 
+		// protocole 
 		printf("\tProtocol type: ");
 		switch(ntohs(arp->ar_pro)) {
 			case ETHERTYPE_IP:
@@ -147,11 +162,13 @@ void arp_viewer(const u_char *packet, u_char verbose) {
 			printf("\n");
 	}
 
+	// longueur des adresses
 	if(verbose & HIGH) {
 		printf("\tHardware address length: %d bytes\n", arp->ar_hln);
 		printf("\tProtocol address length: %d bytes\n", arp->ar_pln);
 	}
 
+	// type de requête ARP
 	if(verbose & (MID|HIGH)) {
 		printf("\tOperation : ");
 		switch(ntohs(arp->ar_op)) {
@@ -212,7 +229,7 @@ void arp_viewer(const u_char *packet, u_char verbose) {
 			arpaddr->ar_tpa[3]
 		);
 	}
-	else {
+	else { // affichace si verbose 1
 		printf(" >");
 		switch(ntohs(arp->ar_op)) {
 			case ARPOP_REQUEST:
