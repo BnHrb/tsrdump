@@ -17,10 +17,11 @@ void ip_viewer(const u_char *packet, u_char verbose) {
 	void (*next_udp)(const u_char*, u_char) = NULL;
 	void (*next_tcp)(const u_char*, int, u_char) = NULL;
 
-	printf("\033[1m");
-	printf("\t=== IPv4 ===\n");
-	printf("\033[0m");
 	if(verbose & (MID|HIGH)) {
+		printf("\033[1m");
+		printf("\t=== IPv4 ===\n");
+		printf("\033[0m");
+
 		printf("\tVersion: %d\n", ip->ip_v);
 		printf("\tIHL: %d (%d bytes)\n", ip->ip_hl, ip->ip_hl*4);
 		if(verbose & HIGH)
@@ -62,8 +63,13 @@ void ip_viewer(const u_char *packet, u_char verbose) {
 		}
 		else
 			printf("\n");
+
+		printf("\tSource: %s\n", inet_ntoa(ip->ip_src));
+		printf("\tDestination: %s\n", inet_ntoa(ip->ip_dst));
 	}
 	else {
+		printf("> (IPv4) %s -> %s ", inet_ntoa(ip->ip_src), inet_ntoa(ip->ip_dst));
+
 		switch(ip->ip_p) {
 			case SOL_UDP:
 				next_udp = udp_viewer;
@@ -73,8 +79,6 @@ void ip_viewer(const u_char *packet, u_char verbose) {
 				break;
 		} 		
 	}
-	printf("\tSource: %s\n", inet_ntoa(ip->ip_src));
-	printf("\tDestination: %s\n", inet_ntoa(ip->ip_dst));
 
 	if(verbose & HIGH) {
 		if(ip->ip_hl > 5) {
@@ -106,10 +110,11 @@ void arp_viewer(const u_char *packet, u_char verbose) {
 	struct arphdr *arp = (struct arphdr*)(packet);
 	int arp_size = sizeof(struct arphdr);
 
-	printf("\033[1m");
-	printf("\t=== ARP ===\n");
-	printf("\033[0m");
 	if(verbose & (MID|HIGH)) {
+		printf("\033[1m");
+		printf("\t=== ARP ===\n");
+		printf("\033[0m");
+
 		printf("\tHardware type: ");
 		switch(ntohs(arp->ar_hrd)) {
 			case ARPHRD_ETHER:
@@ -147,35 +152,35 @@ void arp_viewer(const u_char *packet, u_char verbose) {
 		printf("\tProtocol address length: %d bytes\n", arp->ar_pln);
 	}
 
-	printf("\tOperation : ");
-	switch(ntohs(arp->ar_op)) {
-		case ARPOP_REQUEST:
-			printf("ARP Request\n");
-			break;
-		case ARPOP_REPLY:
-			printf("ARP Reply\n");
-			break;
-		case ARPOP_RREQUEST:
-			printf("RARP Request\n");
-			break;
-		case ARPOP_RREPLY:
-			printf("RARP Reply\n");
-			break;
-		case ARPOP_InREQUEST:
-			printf("InARP Request\n");
-			break;
-		case ARPOP_InREPLY:
-			printf("InARP Reply\n");
-			break;
-		case ARPOP_NAK:
-			printf("ARP NAK\n");
-			break;
-		default:
-			printf("Unknown\n");
-			break;
-	}
+	if(verbose & (MID|HIGH)) {
+		printf("\tOperation : ");
+		switch(ntohs(arp->ar_op)) {
+			case ARPOP_REQUEST:
+				printf("ARP Request\n");
+				break;
+			case ARPOP_REPLY:
+				printf("ARP Reply\n");
+				break;
+			case ARPOP_RREQUEST:
+				printf("RARP Request\n");
+				break;
+			case ARPOP_RREPLY:
+				printf("RARP Reply\n");
+				break;
+			case ARPOP_InREQUEST:
+				printf("InARP Request\n");
+				break;
+			case ARPOP_InREPLY:
+				printf("InARP Reply\n");
+				break;
+			case ARPOP_NAK:
+				printf("ARP NAK\n");
+				break;
+			default:
+				printf("Unknown\n");
+				break;
+		}
 
-	if(verbose & (HIGH|MID)) {
 		struct arpaddr *arpaddr = (struct arpaddr*)(packet + arp_size);
 
 		printf("\tSender hardware address: %02x:%02x:%02x:%02x:%02x:%02x\n", 
@@ -206,6 +211,35 @@ void arp_viewer(const u_char *packet, u_char verbose) {
 			arpaddr->ar_tpa[2],
 			arpaddr->ar_tpa[3]
 		);
+	}
+	else {
+		printf(" >");
+		switch(ntohs(arp->ar_op)) {
+			case ARPOP_REQUEST:
+				printf(" (ARP) Request");
+				break;
+			case ARPOP_REPLY:
+				printf(" (ARP) Reply");
+				break;
+			case ARPOP_RREQUEST:
+				printf(" (RARP) Request");
+				break;
+			case ARPOP_RREPLY:
+				printf(" (RARP) Reply");
+				break;
+			case ARPOP_InREQUEST:
+				printf(" (InARP) Request");
+				break;
+			case ARPOP_InREPLY:
+				printf(" (InARP) Reply");
+				break;
+			case ARPOP_NAK:
+				printf(" (ARP) NAK");
+				break;
+			default:
+				printf(" (ARP) Unknown");
+				break;
+		}		
 	}
 
 }

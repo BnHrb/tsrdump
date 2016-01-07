@@ -12,10 +12,12 @@ void udp_viewer(const u_char *packet, u_char verbose) {
 
 	void (*next_layer)(const u_char*, int, u_char) = NULL;
 
-	printf("\033[1m");
-	printf("\t\t=== UDP ===\n");
-	printf("\033[0m");
-	printf("\t\tSource port: %d\n", ntohs(udp->uh_sport));
+	if(verbose & (MID|HIGH)) {
+		printf("\033[1m");
+		printf("\t\t=== UDP ===\n");
+		printf("\033[0m");
+		printf("\t\tSource port: %d\n", ntohs(udp->uh_sport));
+	}
 	switch(ntohs(udp->uh_sport)) {
 		case 53:
 			next_layer = dns_viewer;
@@ -27,7 +29,8 @@ void udp_viewer(const u_char *packet, u_char verbose) {
 			next_layer = bootp_viewer;
 			break;
 	}
-	printf("\t\tDestination port: %d\n", ntohs(udp->uh_dport));
+	if(verbose & (MID|HIGH))
+		printf("\t\tDestination port: %d\n", ntohs(udp->uh_dport));
 	if(next_layer == NULL) {
 		switch(ntohs(udp->uh_dport)) {
 			case 53:
@@ -46,6 +49,9 @@ void udp_viewer(const u_char *packet, u_char verbose) {
 	if(verbose & HIGH)
 		printf("\t\tChecksum: 0x%04x\n", ntohs(udp->uh_sum));
 
+	if(verbose & LOW) 
+		printf(" > (UDP) %d -> %d ", ntohs(udp->uh_sport), ntohs(udp->uh_dport));
+
 	if(next_layer != NULL && (int)(ntohs(udp->uh_ulen) - udp_size) > 0)
 		(*next_layer)(packet + udp_size, (int)(ntohs(udp->uh_ulen) - udp_size), verbose);
 }
@@ -56,10 +62,12 @@ void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 
 	void (*next_layer)(const u_char*, int, u_char) = NULL;
 
-	printf("\033[1m");
-	printf("\t\t=== TCP ===\n");
-	printf("\033[0m");
-	printf("\t\tSource port: %d\n", ntohs(tcp->th_sport));
+	if(verbose & (MID|HIGH)) {
+		printf("\033[1m");
+		printf("\t\t=== TCP ===\n");
+		printf("\033[0m");
+		printf("\t\tSource port: %d\n", ntohs(tcp->th_sport));
+	}
 	switch(ntohs(tcp->th_sport)) {
 		case 80:
 			next_layer = http_viewer;
@@ -83,7 +91,8 @@ void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 			next_layer = ftp_viewer;
 			break;
 	}
-	printf("\t\tDestination port: %d\n", ntohs(tcp->th_dport));
+	if(verbose & (MID|HIGH))
+		printf("\t\tDestination port: %d\n", ntohs(tcp->th_dport));
 	if(next_layer == NULL) {
 		switch(ntohs(tcp->th_dport)) {
 			case 80:
@@ -111,27 +120,30 @@ void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 	}
 
 	if(verbose & (MID|HIGH)) {
-		printf("\t\tSequence number: %d (0x%04x)\n", ntohs(tcp->th_seq), ntohs(tcp->th_seq));
-		printf("\t\tAcknowledgment number: %d\n", ntohs(tcp->th_ack));
+		printf("\t\tSequence number: %d (0x%04x)\n", ntohl(tcp->th_seq), ntohl(tcp->th_seq));
+		printf("\t\tAcknowledgment number: %d\n", ntohl(tcp->th_ack));
 		printf("\t\tHeader length: %d bytes\n", tcphdr_size);
-		printf("\t\tFlags: 0x%02x\n", tcp->th_flags);
-	}
-	else {
-		printf("\t\tFlags: \n");
 	}
 
-	if(TH_FIN & tcp->th_flags)
-		printf("\t\t - FIN\n");
-	if(TH_SYN & tcp->th_flags)
-		printf("\t\t - SYN\n");
-	if(TH_RST & tcp->th_flags)
-		printf("\t\t - RST\n");
-	if(TH_PUSH & tcp->th_flags)
-		printf("\t\t - PSH\n");
-	if(TH_ACK & tcp->th_flags)
-		printf("\t\t - ACK\n");
-	if(TH_URG & tcp->th_flags)
-		printf("\t\t - URG\n");
+	if(verbose & HIGH)
+		printf("\t\tFlags: 0x%02x\n", tcp->th_flags);
+	else if(verbose & MID)
+		printf("\t\tFlags: \n");
+
+	if(verbose & (MID|HIGH)) {
+		if(TH_FIN & tcp->th_flags)
+			printf("\t\t - FIN\n");
+		if(TH_SYN & tcp->th_flags)
+			printf("\t\t - SYN\n");
+		if(TH_RST & tcp->th_flags)
+			printf("\t\t - RST\n");
+		if(TH_PUSH & tcp->th_flags)
+			printf("\t\t - PSH\n");
+		if(TH_ACK & tcp->th_flags)
+			printf("\t\t - ACK\n");
+		if(TH_URG & tcp->th_flags)
+			printf("\t\t - URG\n");
+	}
 
 	if(verbose & HIGH) {
 		printf("\t\tWindow: %d\n", ntohs(tcp->th_win));
@@ -192,6 +204,24 @@ void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 		else if(verbose & MID) {
 			printf("\t\tOptions: %ld bytes\n", tcp_size - sizeof(struct tcphdr));
 		}
+	}
+
+	if(verbose & LOW) {
+		printf(" > (TCP) %d -> %d (", ntohs(tcp->th_sport), ntohs(tcp->th_dport));
+		if(TH_FIN & tcp->th_flags)
+			printf("FIN ");
+		if(TH_SYN & tcp->th_flags)
+			printf("SYN ");
+		if(TH_RST & tcp->th_flags)
+			printf("RST ");
+		if(TH_PUSH & tcp->th_flags)
+			printf("PSH ");
+		if(TH_ACK & tcp->th_flags)
+			printf("ACK ");
+		if(TH_URG & tcp->th_flags)
+			printf("URG ");
+
+		printf("\b)");
 	}
 
 	if(next_layer != NULL && (tcp_size - tcphdr_size) > 0)

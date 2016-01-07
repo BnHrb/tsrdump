@@ -31,13 +31,16 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 
 
 	n++;
-	if(n<10) { 
+	//if(n<3) { 
 		ts = localtime(&(header->ts.tv_sec));
 		strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
-		printf("Packet #%d -- %s | length %d bytes\n", n, buf, header->len);
+		if(*args & LOW)
+			printf("#%d: ", n);
+		else 
+			printf("Packet #%d -- %s | length %d bytes\n", n, buf, header->len);
 		ethernet_viewer(packet, *args);
 		printf("\n");
-	}
+	//}
 }
 
 void usage() {
@@ -136,7 +139,7 @@ int main(int argc, char *argv[])
 	}
 
 
-	printf("Device: %s\n", dev);
+	printf("Device: %s\n\n", dev);
 
 	/* Loop */
 	pcap_loop(handle, -1, packet_handler, (u_char*)&verbose);

@@ -11,27 +11,28 @@ void ethernet_viewer(const u_char *packet, u_char verbose) {
 	int size_ethernet = sizeof(struct ether_header);
 
 	void (*next_layer)(const u_char*, u_char) = NULL;
-	printf("\033[1m");
-	printf("\n=== Ethernet ===\n");
-	printf("\033[0m");
-
-	printf("Destination: %02x:%02x:%02x:%02x:%02x:%02x\n", 
-		ethernet->ether_dhost[0],
-		ethernet->ether_dhost[1],
-		ethernet->ether_dhost[2],
-		ethernet->ether_dhost[3],
-		ethernet->ether_dhost[4],
-		ethernet->ether_dhost[5]);
-
-	printf("Source: %02x:%02x:%02x:%02x:%02x:%02x\n", 
-		ethernet->ether_shost[0],
-		ethernet->ether_shost[1],
-		ethernet->ether_shost[2],
-		ethernet->ether_shost[3],
-		ethernet->ether_shost[4],
-		ethernet->ether_shost[5]);
 
 	if(verbose & (MID|HIGH)) {
+		printf("\033[1m");
+		printf("\n=== Ethernet ===\n");
+		printf("\033[0m");
+
+		printf("Destination: %02x:%02x:%02x:%02x:%02x:%02x\n", 
+			ethernet->ether_dhost[0],
+			ethernet->ether_dhost[1],
+			ethernet->ether_dhost[2],
+			ethernet->ether_dhost[3],
+			ethernet->ether_dhost[4],
+			ethernet->ether_dhost[5]);
+
+		printf("Source: %02x:%02x:%02x:%02x:%02x:%02x\n", 
+			ethernet->ether_shost[0],
+			ethernet->ether_shost[1],
+			ethernet->ether_shost[2],
+			ethernet->ether_shost[3],
+			ethernet->ether_shost[4],
+			ethernet->ether_shost[5]);
+
 		printf("Type: ");
 		switch(ntohs(ethernet->ether_type)) {
 			case ETHERTYPE_IP:
@@ -56,6 +57,22 @@ void ethernet_viewer(const u_char *packet, u_char verbose) {
 			printf("\n");
 	}
 	else {
+		printf("%02x:%02x:%02x:%02x:%02x:%02x -> ", 
+			ethernet->ether_shost[0],
+			ethernet->ether_shost[1],
+			ethernet->ether_shost[2],
+			ethernet->ether_shost[3],
+			ethernet->ether_shost[4],
+			ethernet->ether_shost[5]);
+
+		printf("%02x:%02x:%02x:%02x:%02x:%02x ", 
+			ethernet->ether_dhost[0],
+			ethernet->ether_dhost[1],
+			ethernet->ether_dhost[2],
+			ethernet->ether_dhost[3],
+			ethernet->ether_dhost[4],
+			ethernet->ether_dhost[5]);
+
 		switch(ntohs(ethernet->ether_type)) {
 			case ETHERTYPE_IP:
 				next_layer = ip_viewer;
