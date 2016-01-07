@@ -10,7 +10,7 @@ void udp_viewer(const u_char *packet, u_char verbose) {
 	struct udphdr* udp = (struct udphdr*)(packet);
 	int udp_size = sizeof(struct udphdr);
 
-	void (*next_layer)(const u_char*, int) = NULL;
+	void (*next_layer)(const u_char*, int, u_char) = NULL;
 
 	printf("\033[1m");
 	printf("\t\t=== UDP ===\n");
@@ -47,14 +47,14 @@ void udp_viewer(const u_char *packet, u_char verbose) {
 		printf("\t\tChecksum: 0x%04x\n", ntohs(udp->uh_sum));
 
 	if(next_layer != NULL && (int)(ntohs(udp->uh_ulen) - udp_size) > 0)
-		(*next_layer)(packet + udp_size, (int)(ntohs(udp->uh_ulen) - udp_size));
+		(*next_layer)(packet + udp_size, (int)(ntohs(udp->uh_ulen) - udp_size), verbose);
 }
 
 void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 	struct tcphdr* tcp = (struct tcphdr*)(packet);
 	int i, j, tmp, tcphdr_size = tcp->th_off*4;
 
-	void (*next_layer)(const u_char*, int) = NULL;
+	void (*next_layer)(const u_char*, int, u_char) = NULL;
 
 	printf("\033[1m");
 	printf("\t\t=== TCP ===\n");
@@ -195,6 +195,6 @@ void tcp_viewer(const u_char *packet, int tcp_size, u_char verbose) {
 	}
 
 	if(next_layer != NULL && (tcp_size - tcphdr_size) > 0)
-		(*next_layer)(packet + tcphdr_size, tcp_size - tcphdr_size);
+		(*next_layer)(packet + tcphdr_size, tcp_size - tcphdr_size, verbose);
 
 }

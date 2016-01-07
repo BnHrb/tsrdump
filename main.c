@@ -7,7 +7,7 @@
 #include <time.h>
 #include <signal.h>
 
-#include "packet.h"
+#include "data_link.h"
 #include "verbose.h"
 
 int n;
@@ -31,11 +31,11 @@ void packet_handler(u_char *args, const struct pcap_pkthdr *header, const u_char
 
 
 	n++;
-	if(n<2) { 
+	if(n<10) { 
 		ts = localtime(&(header->ts.tv_sec));
 		strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
 		printf("Packet #%d -- %s | length %d bytes\n", n, buf, header->len);
-		packet_viewer(packet, *args);
+		ethernet_viewer(packet, *args);
 		printf("\n");
 	}
 }

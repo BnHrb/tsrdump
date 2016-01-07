@@ -1,7 +1,7 @@
 CFLAGS=-Wall -lpcap
 CFLAGS_COMPLETE=-lpcap -g -std=gnu99 -W -Wall -Wextra -Wmissing-declarations -Wmissing-prototypes -Wredundant-decls -Wshadow -Wbad-function-cast -Wcast-qual -Wno-discarded-qualifiers
 CC=gcc
-C_SOURCES=application.c transport.c network.c data_link.c packet.c main.c
+C_SOURCES=application.c transport.c network.c data_link.c main.c
 OUTPUT=tsrdump
 FILESTOREMOVE=$(OUTPUT)
 
